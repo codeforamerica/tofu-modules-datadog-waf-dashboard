@@ -1,0 +1,758 @@
+title: "${title}"
+description: Monitoring of the Web Application Firewall for all environments.
+layout_type: ordered
+notify_list: []
+reflow_type: fixed
+template_variables:
+  - name: ACL
+    prefix: webacl
+    available_values: []
+    defaults:
+      %{ for acl in default_webacls }
+      - ${acl}
+      %{ endfor }
+widgets:
+  # Display the total number of requests.
+  - definition:
+      title: Total requests
+      title_size: "16"
+      title_align: left
+      type: query_value
+      requests:
+        - formulas:
+            - formula: allowed + blocked + counted
+          queries:
+            - name: allowed
+              data_source: metrics
+              query: sum:aws.wafv2.allowed_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: blocked
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: counted
+              data_source: metrics
+              query: sum:aws.wafv2.counted_requests{$ACL}.as_count()
+              aggregator: sum
+          response_format: scalar
+      autoscale: true
+      text_align: center
+      precision: 2
+    layout:
+      x: 0
+      "y": 0
+      width: 2
+      height: 2
+
+  # Display the percentage of allowed requests.
+  - definition:
+      title: Allowed
+      title_size: "16"
+      title_align: left
+      type: query_value
+      requests:
+        - formulas:
+            - number_format:
+                unit:
+                  type: canonical_unit
+                  unit_name: percent
+              formula: (default_zero(allowed) / (default_zero(allowed) + default_zero(blocked) + counted)) * 100
+          queries:
+            - name: allowed
+              data_source: metrics
+              query: sum:aws.wafv2.allowed_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: blocked
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: counted
+              data_source: metrics
+              query: sum:aws.wafv2.counted_requests{$ACL}.as_count()
+              aggregator: sum
+          response_format: scalar
+          conditional_formats:
+            - comparator: '>='
+              value: ${threshold_allowed_caution}
+              palette: white_on_green
+            - comparator: <
+              value: ${threshold_allowed_caution}
+              palette: white_on_yellow
+            - comparator: <
+              value: ${threshold_allowed_warning}
+              palette: white_on_red
+      autoscale: false
+      text_align: center
+      precision: 2
+      timeseries_background:
+        yaxis:
+          include_zero: true
+        type: area
+    layout:
+      x: 2
+      "y": 0
+      width: 2
+      height: 2
+
+  # Display the percentage of blocked requests, excluding rate limited requests.
+  - definition:
+      title: Blocked
+      title_size: "16"
+      title_align: left
+      type: query_value
+      requests:
+        - formulas:
+            - number_format:
+                unit:
+                  type: canonical_unit
+                  unit_name: percent
+              formula: (default_zero(blocked) / (default_zero(allowed) + default_zero(blocked) + default_zero(limited))) * 100
+          queries:
+            - name: blocked
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:*,!rule:all,!rule:*-waf-rate-*}.as_count()
+              aggregator: sum
+            - name: allowed
+              data_source: metrics
+              query: sum:aws.wafv2.allowed_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: limited
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:*-waf-rate-*}.as_count()
+              aggregator: sum
+          response_format: scalar
+          conditional_formats:
+            - comparator: <=
+              value: ${threshold_blocked_caution}
+              palette: white_on_green
+            - comparator: ">"
+              value: ${threshold_blocked_caution}
+              palette: white_on_yellow
+            - comparator: ">"
+              value: ${threshold_blocked_warning}
+              palette: white_on_red
+      autoscale: false
+      text_align: center
+      precision: 2
+      timeseries_background:
+        yaxis:
+          include_zero: true
+        type: area
+    layout:
+      x: 4
+      "y": 0
+      width: 2
+      height: 2
+
+  # Display the percentage of rate limited requests.
+  - definition:
+      title: Rate Limited
+      title_size: "16"
+      title_align: left
+      type: query_value
+      requests:
+        - formulas:
+            - number_format:
+                unit:
+                  type: canonical_unit
+                  unit_name: percent
+              formula: (default_zero(limited) / (default_zero(blocked) + default_zero(allowed) + default_zero(limited))) * 100
+          queries:
+            - name: blocked
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:*,!rule:all,!rule:*-waf-rate-*}.as_count()
+              aggregator: sum
+            - name: allowed
+              data_source: metrics
+              query: sum:aws.wafv2.allowed_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: limited
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:*-waf-rate-*}.as_count()
+              aggregator: sum
+          response_format: scalar
+          conditional_formats:
+            - comparator: <
+              value: ${threshold_limited_caution}
+              palette: white_on_green
+            - comparator: '>='
+              value: ${threshold_limited_caution}
+              palette: white_on_yellow
+            - comparator: '>='
+              value: ${threshold_limited_warning}
+              palette: white_on_red
+      autoscale: false
+      text_align: center
+      precision: 2
+      timeseries_background:
+        yaxis:
+          include_zero: true
+        type: area
+    layout:
+      x: 6
+      "y": 0
+      width: 2
+      height: 2
+
+  # Display the percentage of counted requests.
+  - definition:
+      title: Counted
+      title_size: "16"
+      title_align: left
+      type: query_value
+      requests:
+        - formulas:
+            - number_format:
+                unit:
+                  type: canonical_unit
+                  unit_name: percent
+              formula: (default_zero(counted) / (default_zero(allowed) + default_zero(blocked))) * 100
+          queries:
+            - name: counted
+              data_source: metrics
+              query: sum:aws.wafv2.counted_requests{$ACL}.as_count()
+              aggregator: sum
+            - name: allowed
+              data_source: metrics
+              query: sum:aws.wafv2.allowed_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+            - name: blocked
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:all}.as_count()
+              aggregator: sum
+          response_format: scalar
+          conditional_formats:
+            - comparator: <
+              value: ${threshold_counted_caution}
+              palette: white_on_green
+            - comparator: '>='
+              value: ${threshold_counted_caution}
+              palette: white_on_yellow
+            - comparator: '>='
+              value: ${threshold_counted_warning}
+              palette: white_on_red
+      autoscale: false
+      text_align: center
+      precision: 2
+      timeseries_background:
+        yaxis:
+          include_zero: true
+        type: area
+    layout:
+      x: 8
+      "y": 0
+      width: 2
+      height: 2
+
+  # Display a stacked bar chart of request over time by status.
+  - definition:
+      title: Requests
+      title_size: "16"
+      title_align: left
+      show_legend: true
+      legend_layout: horizontal
+      legend_columns:
+        - avg
+        - min
+        - max
+        - value
+        - sum
+      type: timeseries
+      requests:
+        - formulas:
+            - alias: allowed
+              style:
+                palette: green
+                palette_index: 0
+              formula: allowed
+            - alias: blocked
+              style:
+                palette: warm
+                palette_index: 6
+              formula: blocked
+            - alias: counted
+              style:
+                palette: classic
+                palette_index: 1
+              formula: counted
+            - alias: rate limited
+              style:
+                palette: classic
+                palette_index: 3
+              formula: limited
+          queries:
+            - name: allowed
+              data_source: metrics
+              query: sum:aws.wafv2.allowed_requests{$ACL,rule:all}.as_count()
+            - name: blocked
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:*,!rule:all,!rule:*-waf-rate-*}.as_count()
+            - name: counted
+              data_source: metrics
+              query: sum:aws.wafv2.counted_requests{$ACL}.as_count()
+            - name: limited
+              data_source: metrics
+              query: sum:aws.wafv2.blocked_requests{$ACL,rule:*-waf-rate-*}.as_count()
+          response_format: timeseries
+          style:
+            palette: dog_classic
+            order_by: values
+            line_type: solid
+            line_width: normal
+          display_type: bars
+    layout:
+      x: 0
+      "y": 2
+      width: 12
+      height: 3
+
+  # Create a collapsible section for blocked requests, excluding rate limited
+  # requests.
+  - layout:
+      x: 0
+      "y": 5
+      width: 12
+      height: 10
+    definition:
+      title: Blocked Requests
+      background_color: vivid_pink
+      show_title: true
+      type: group
+      layout_type: ordered
+      widgets:
+        # Display blocked requests over time.
+        - definition:
+            title: Blocked requests
+            title_size: "16"
+            title_align: left
+            show_legend: true
+            legend_layout: auto
+            legend_columns:
+              - avg
+              - min
+              - max
+              - value
+              - sum
+            type: timeseries
+            requests:
+              - formulas:
+                  - formula: query1
+                queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.blocked_requests{$ACL, rule:*,!rule:all,!rule:*-waf-rate-*}.as_count()
+                response_format: timeseries
+                style:
+                  palette: dog_classic
+                  order_by: values
+                  line_type: solid
+                  line_width: normal
+                display_type: line
+          layout:
+            x: 0
+            "y": 0
+            width: 8
+            height: 3
+
+        # Display a list of the top blocked IP addresses.
+        - definition:
+            title: Top blocked IPs
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL !@terminatingRuleType:RATE_BASED @action:BLOCK
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.clientIp'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
+            x: 8
+            "y": 0
+            width: 4
+            height: 3
+
+        # Display a list of blocked requests by attack type.
+        - definition:
+            title: By attack
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.blocked_requests{attack:*,!attack:volumetric,$ACL} by {attack}.as_count()
+                    aggregator: sum
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 50
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+              palette: dog_classic
+          layout:
+            x: 0
+            "y": 3
+            width: 4
+            height: 3
+
+        # Display a list of blocked requests by managed rule.
+        - definition:
+            title: By managed rule
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.blocked_requests{managedrulegrouprule:*,$ACL} by {managedrulegrouprule}.as_count()
+                    aggregator: sum
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 50
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+              palette: dog_classic
+          layout:
+            x: 4
+            "y": 3
+            width: 4
+            height: 3
+
+        # Display a list of blocked requests by rule.
+        - definition:
+            title: By rule
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.blocked_requests{$ACL, rule:*,!rule:all,!rule:*-waf-rate-*} by {rule}.as_count()
+                    aggregator: sum
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 50
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+              palette: dog_classic
+          layout:
+            x: 8
+            "y": 3
+            width: 4
+            height: 3
+
+        # Display log entries for blocked requests.
+        - definition:
+            title: Log Entries
+            title_size: "16"
+            title_align: left
+            requests:
+              - response_format: event_list
+                query:
+                  data_source: logs_stream
+                  query_string: source:waf $ACL !@terminatingRuleType:RATE_BASED @action:BLOCK
+                  indexes: []
+                  storage: hot
+                columns:
+                  - field: status_line
+                    width: auto
+                  - field: timestamp
+                    width: auto
+                  - field: host
+                    width: auto
+                  - field: service
+                    width: auto
+                  - field: content
+                    width: compact
+            type: list_stream
+          layout:
+            x: 0
+            "y": 6
+            width: 12
+            height: 3
+
+  # Create a collapsible section for rate limited requests.
+  - layout:
+      x: 0
+      "y": 15
+      width: 12
+      height: 7
+      is_column_break: true
+    definition:
+      title: Rate Limiting
+      background_color: vivid_purple
+      show_title: true
+      type: group
+      layout_type: ordered
+      widgets:
+        # Display rate limited requests over time.
+        - definition:
+            title: Rate limited requests
+            title_size: "16"
+            title_align: left
+            show_legend: true
+            legend_layout: auto
+            legend_columns:
+              - avg
+              - min
+              - max
+              - value
+              - sum
+            type: timeseries
+            requests:
+              - formulas:
+                  - formula: query1
+                queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.blocked_requests{rule:*-waf-rate-*, $ACL}.as_count()
+                response_format: timeseries
+                style:
+                  palette: dog_classic
+                  order_by: values
+                  line_type: solid
+                  line_width: normal
+                display_type: line
+          layout:
+            x: 0
+            "y": 0
+            width: 8
+            height: 3
+
+        # Display a list of the top rate limited IP addresses.
+        - definition:
+            title: Top rate limited IPs
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL @terminatingRuleType:RATE_BASED @action:BLOCK
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.clientIp'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                      metric: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
+            x: 8
+            "y": 0
+            width: 4
+            height: 3
+
+        # Display log messages for rate limited requests.
+        - definition:
+            title: Log Entries
+            title_size: "16"
+            title_align: left
+            requests:
+              - response_format: event_list
+                query:
+                  data_source: logs_stream
+                  query_string: source:waf $ACL @terminatingRuleType:RATE_BASED
+                  indexes: []
+                  storage: hot
+                columns:
+                  - field: status_line
+                    width: auto
+                  - field: timestamp
+                    width: auto
+                  - field: host
+                    width: auto
+                  - field: service
+                    width: auto
+                  - field: content
+                    width: compact
+            type: list_stream
+          layout:
+            x: 0
+            "y": 3
+            width: 12
+            height: 3
+
+  # Create a collapsible section for counted requests.
+  - layout:
+      x: 0
+      "y": 22
+      width: 12
+      height: 7
+    definition:
+      title: Counted Requests
+      background_color: vivid_yellow
+      show_title: true
+      type: group
+      layout_type: ordered
+      widgets:
+        # Display counted requests over time.
+        - definition:
+            title: Counted Requests
+            title_size: "16"
+            title_align: left
+            show_legend: true
+            legend_layout: auto
+            legend_columns:
+              - avg
+              - min
+              - max
+              - value
+              - sum
+            time: {}
+            type: timeseries
+            requests:
+              - formulas:
+                  - formula: query1
+                queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.counted_requests{$ACL} by {rule}.as_count()
+                response_format: timeseries
+                style:
+                  palette: dog_classic
+                  order_by: values
+                  line_type: solid
+                  line_width: normal
+                display_type: line
+          layout:
+            x: 0
+            "y": 0
+            width: 8
+            height: 3
+        # Display a list of counted requests by rule.
+        - definition:
+            title: By rule
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - data_source: metrics
+                    name: query1
+                    query: sum:aws.wafv2.counted_requests{rule:*,$ACL,!rule:all} by {rule}.as_count()
+                    aggregator: avg
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 50
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+              palette: dog_classic
+          layout:
+            x: 8
+            "y": 0
+            width: 4
+            height: 3
+
+        # Display log messages for counted requests.
+        - definition:
+            title: Log Entries
+            title_size: "16"
+            title_align: left
+            time: {}
+            requests:
+              - response_format: event_list
+                query:
+                  data_source: logs_stream
+                  query_string: source:waf $ACL @ruleGroupList.nonTerminatingMatchingRules.action:COUNT
+                  indexes: []
+                  storage: hot
+                columns:
+                  - field: status_line
+                    width: auto
+                  - field: timestamp
+                    width: auto
+                  - field: host
+                    width: auto
+                  - field: service
+                    width: auto
+                  - field: content
+                    width: compact
+            type: list_stream
+          layout:
+            x: 0
+            "y": 3
+            width: 12
+            height: 3

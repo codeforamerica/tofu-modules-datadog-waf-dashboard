@@ -1,33 +1,22 @@
-# Code for America OpenTofu Module Template
+# Datadog WAF Module
 
 [![Main Checks][badge-checks]][code-checks] [![GitHub Release][badge-release]][latest-release]
 
-Use this template repository to create new OpenTofu modules. Follow the steps
-below to use this repository:
+This module creates a dashboard in Datadog for monitoring an AWS based Web
+Application Firewall.
 
-1. Click the "Use this template" button to create a new repository
-1. Name your new repository using the format `todu-modules-<provider>-<module>`
-1. Add the files necessary to support your module to the root of your new
-   repository
-1. Update the `README.md` file with the appropriate information for your module.
-   Make sure you update any references to this template repository with your new
-   repository
-1. Update the [codeforamerica/tofu-modules][tofu-modules] repository to include
-   your new module in the main `README.md` and the documentation
+![Screenshot of the Datadog WAF Dashboard][screenshot-dashboard]
 
 ## Usage
 
 Add this module to your `main.tf` (or appropriate) file and configure the inputs
 to match your desired configuration. For example:
 
-[//]: # (TODO: Update to match your module's name and inputs)
-
 ```hcl
-module "module_name" {
-  source = "github.com/codeforamerica/tofu-modules-template?ref=1.0.0"
+module "datadog_waf" {
+  source = "github.com/codeforamerica/tofu-modules-datadog-waf?ref=1.0.0"
 
-  project = "my-project"
-  environment = "development"
+  default_webacls = ["my-project-prod"]
 }
 ```
 
@@ -46,31 +35,21 @@ tofu init -upgrade
 
 ## Inputs
 
-[//]: # (TODO: Replace the following with your own inputs)
+| Name                      | Description                                                                                                                  | Type           | Default                            | Required |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------------|----------------|------------------------------------|----------|
+| default_webacls           | Default WebACLs to for the dashboard filter.                                                                                 | `list(string)` | `[]`                               | no       |
+| threshold_allowed_caution | Caution threshold for allowed requests. Reflected when the percentage of allowed requests drops below this number.           | `number`       | `95`                               | no       |
+| threshold_allowed_warning | Warning threshold for allowed requests. Reflected when the percentage of allowed requests drops below this number.           | `number`       | `85`                               | no       |
+| threshold_blocked_caution | Caution threshold for blocked requests. Reflected when the percentage of blocked requests rises above this number.           | `number`       | `5`                                | no       |
+| threshold_blocked_warning | Warning threshold for blocked requests. Reflected when the percentage of blocked requests rises above this number.           | `number`       | `10`                               | no       |
+| threshold_counted_caution | Caution threshold for counted requests. Reflected when the percentage of counted requests rises above this number.           | `number`       | `5`                                | no       |
+| threshold_counted_warning | Warning threshold for counted requests. Reflected when the percentage of counted requests rises above this number.           | `number`       | `10`                               | no       |
+| threshold_limited_caution | Caution threshold for rate limited requests. Reflected when the percentage of rate limited rises above below this number.    | `number`       | `5`                                | no       |
+| threshold_limited_warning | Warning threshold for rate limited requests. Reflected when the percentage of rate limited requests rises above this number. | `number`       | `10`                               | no       |
+| title                     | Title of the dashboard.                                                                                                      | `string`       | `"Web Application Firewall (WAF)"` | no       |
 
-| Name        | Description                                   | Type     | Default | Required |
-|-------------|-----------------------------------------------|----------|---------|----------|
-| project     | Name of the project.                          | `string` | n/a     | yes      |
-| environment | Environment for the project.                  | `string` | `"dev"` | no       |
-| tags        | Optional tags to be applied to all resources. | `list`   | `[]`    | no       |
-
-## Outputs
-
-[//]: # (TODO: Replace the following with your own outputs)
-
-| Name     | Description                       | Type     |
-|----------|-----------------------------------|----------|
-| id       | Id of the newly created resource. | `string` |
-
-
-## Contributing
-
-Follow the [contributing guidelines][contributing] to contribute to this
-repository.
-
-[badge-checks]: https://github.com/codeforamerica/tofu-modules-template/actions/workflows/main.yaml/badge.svg
-[badge-release]: https://img.shields.io/github/v/release/codeforamerica/tofu-modules-template?logo=github&label=Latest%20Release
-[code-checks]: https://github.com/codeforamerica/tofu-modules-template/actions/workflows/main.yaml
-[contributing]: CONTRIBUTING.md
-[latest-release]: https://github.com/codeforamerica/tofu-modules-template/releases/latest
-[tofu-modules]: https://github.com/codeforamerica/tofu-modules
+[badge-checks]: https://github.com/codeforamerica/tofu-modules-datadog-waf-dashboard/actions/workflows/main.yaml/badge.svg
+[badge-release]: https://img.shields.io/github/v/release/codeforamerica/tofu-modules-datadog-waf-dashboard?logo=github&label=Latest%20Release
+[code-checks]: https://github.com/codeforamerica/tofu-modules-datadog-waf-dashboard/actions/workflows/main.yaml
+[latest-release]: https://github.com/codeforamerica/tofu-modules-datadog-waf-dashboard/releases/latest
+[screenshot-dashboard]: docs/assets/dashboard.jpeg

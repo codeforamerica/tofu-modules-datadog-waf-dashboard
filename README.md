@@ -5,6 +5,8 @@
 This module creates a dashboard in Datadog for monitoring an AWS based Web
 Application Firewall.
 
+![Screenshot of the Datadog WAF Dashboard][screenshot-dashboard]
+
 ## Usage
 
 Add this module to your `main.tf` (or appropriate) file and configure the inputs
@@ -12,7 +14,7 @@ to match your desired configuration. For example:
 
 ```hcl
 module "datadog_waf" {
-  source = "github.com/codeforamerica/tofu-modules-datadog-waf-dashboard?ref=1.0.0"
+  source = "github.com/codeforamerica/tofu-modules-datadog-waf?ref=1.0.0"
 
   default_webacls = ["my-project-prod"]
 }
@@ -50,3 +52,4 @@ tofu init -upgrade
 [badge-release]: https://img.shields.io/github/v/release/codeforamerica/tofu-modules-datadog-waf-dashboard?logo=github&label=Latest%20Release
 [code-checks]: https://github.com/codeforamerica/tofu-modules-datadog-waf-dashboard/actions/workflows/main.yaml
 [latest-release]: https://github.com/codeforamerica/tofu-modules-datadog-waf-dashboard/releases/latest
+[screenshot-dashboard]: docs/assets/dashboard.jpeg

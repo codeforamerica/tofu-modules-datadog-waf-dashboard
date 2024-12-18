@@ -312,7 +312,7 @@ widgets:
       x: 0
       "y": 5
       width: 12
-      height: 10
+      height: 13
     definition:
       title: Blocked Requests
       background_color: vivid_pink
@@ -325,7 +325,7 @@ widgets:
             title: Blocked requests
             title_size: "16"
             title_align: left
-            show_legend: true
+            show_legend: false
             legend_layout: auto
             legend_columns:
               - avg
@@ -337,10 +337,11 @@ widgets:
             requests:
               - formulas:
                   - formula: query1
+                    alias: requests
                 queries:
                   - data_source: metrics
                     name: query1
-                    query: sum:aws.wafv2.blocked_requests{$ACL, rule:*,!rule:all,!rule:*-waf-rate-*}.as_count()
+                    query: sum:aws.wafv2.blocked_requests{$ACL AND ((rule:* AND NOT rule:all AND NOT rule:*-waf-rate-*) OR managedrulegrouprule:*)}.as_count()
                 response_format: timeseries
                 style:
                   palette: dog_classic
@@ -351,51 +352,7 @@ widgets:
           layout:
             x: 0
             "y": 0
-            width: 8
-            height: 3
-
-        # Display a list of the top blocked IP addresses.
-        - definition:
-            title: Top blocked IPs
-            title_size: "16"
-            title_align: left
-            type: toplist
-            requests:
-              - queries:
-                  - name: query1
-                    data_source: logs
-                    search:
-                      query: source:waf $ACL !@terminatingRuleType:RATE_BASED @action:BLOCK
-                    indexes:
-                      - '*'
-                    group_by:
-                      - facet: '@httpRequest.clientIp'
-                        limit: 10
-                        sort:
-                          aggregation: count
-                          order: desc
-                          metric: count
-                        should_exclude_missing: true
-                    compute:
-                      aggregation: count
-                    storage: hot
-                response_format: scalar
-                formulas:
-                  - formula: query1
-                sort:
-                  count: 10
-                  order_by:
-                    - type: formula
-                      index: 0
-                      order: desc
-            style:
-              display:
-                type: stacked
-                legend: automatic
-          layout:
-            x: 8
-            "y": 0
-            width: 4
+            width: 12
             height: 3
 
         # Display a list of blocked requests by attack type.
@@ -494,6 +451,94 @@ widgets:
             width: 4
             height: 3
 
+        # Display a list of the top blocked IP addresses.
+        - definition:
+            title: Top blocked IPs
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL !@terminatingRuleType:RATE_BASED @action:BLOCK
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.clientIp'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
+            x: 0
+            "y": 6
+            width: 4
+            height: 3
+
+        # Display a list of the top blocked paths.
+        - definition:
+            title: Top blocked paths
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL !@terminatingRuleType:RATE_BASED @action:BLOCK
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.uri'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
+            x: 4
+            "y": 6
+            width: 4
+            height: 3
+
         # Display log entries for blocked requests.
         - definition:
             title: Log Entries
@@ -520,16 +565,16 @@ widgets:
             type: list_stream
           layout:
             x: 0
-            "y": 6
+            "y": 9
             width: 12
             height: 3
 
   # Create a collapsible section for rate limited requests.
   - layout:
       x: 0
-      "y": 15
+      "y": 18
       width: 12
-      height: 7
+      height: 10
       is_column_break: true
     definition:
       title: Rate Limiting
@@ -543,7 +588,7 @@ widgets:
             title: Rate limited requests
             title_size: "16"
             title_align: left
-            show_legend: true
+            show_legend: false
             legend_layout: auto
             legend_columns:
               - avg
@@ -555,6 +600,7 @@ widgets:
             requests:
               - formulas:
                   - formula: query1
+                    alias: requests
                 queries:
                   - data_source: metrics
                     name: query1
@@ -569,7 +615,7 @@ widgets:
           layout:
             x: 0
             "y": 0
-            width: 8
+            width: 12
             height: 3
 
         # Display a list of the top rate limited IP addresses.
@@ -612,8 +658,53 @@ widgets:
                 type: stacked
                 legend: automatic
           layout:
-            x: 8
-            "y": 0
+            x: 0
+            "y": 3
+            width: 4
+            height: 3
+
+        # Display a list of the top rate limited paths.
+        - definition:
+            title: Top rate limited paths
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL @terminatingRuleType:RATE_BASED @action:BLOCK
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.uri'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                      metric: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
+            x: 4
+            "y": 3
             width: 4
             height: 3
 
@@ -643,16 +734,16 @@ widgets:
             type: list_stream
           layout:
             x: 0
-            "y": 3
+            "y": 6
             width: 12
             height: 3
 
   # Create a collapsible section for counted requests.
   - layout:
       x: 0
-      "y": 22
+      "y": 28
       width: 12
-      height: 7
+      height: 10
     definition:
       title: Counted Requests
       background_color: vivid_yellow
@@ -678,6 +769,7 @@ widgets:
             requests:
               - formulas:
                   - formula: query1
+                    alias: requests
                 queries:
                   - data_source: metrics
                     name: query1
@@ -692,8 +784,9 @@ widgets:
           layout:
             x: 0
             "y": 0
-            width: 8
+            width: 12
             height: 3
+
         # Display a list of counted requests by rule.
         - definition:
             title: By rule
@@ -705,7 +798,7 @@ widgets:
                   - data_source: metrics
                     name: query1
                     query: sum:aws.wafv2.counted_requests{rule:*,$ACL,!rule:all} by {rule}.as_count()
-                    aggregator: avg
+                    aggregator: sum
                 response_format: scalar
                 formulas:
                   - formula: query1
@@ -721,8 +814,96 @@ widgets:
                 legend: automatic
               palette: dog_classic
           layout:
+            x: 0
+            "y": 3
+            width: 4
+            height: 3
+
+        # Display a list of the top counted IP addresses.
+        - definition:
+            title: Top counted IPs
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL @nonTerminatingMatchingRules.action:COUNT
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.clientIp'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
+            x: 4
+            "y": 3
+            width: 4
+            height: 3
+
+        # Display a list of the top counted paths.
+        - definition:
+            title: Top counted paths
+            title_size: "16"
+            title_align: left
+            type: toplist
+            requests:
+              - queries:
+                  - name: query1
+                    data_source: logs
+                    search:
+                      query: source:waf $ACL @nonTerminatingMatchingRules.action:COUNT
+                    indexes:
+                      - '*'
+                    group_by:
+                      - facet: '@httpRequest.uri'
+                        limit: 10
+                        sort:
+                          aggregation: count
+                          order: desc
+                          metric: count
+                        should_exclude_missing: true
+                    compute:
+                      aggregation: count
+                    storage: hot
+                response_format: scalar
+                formulas:
+                  - formula: query1
+                sort:
+                  count: 10
+                  order_by:
+                    - type: formula
+                      index: 0
+                      order: desc
+            style:
+              display:
+                type: stacked
+                legend: automatic
+          layout:
             x: 8
-            "y": 0
+            "y": 3
             width: 4
             height: 3
 
@@ -736,7 +917,7 @@ widgets:
               - response_format: event_list
                 query:
                   data_source: logs_stream
-                  query_string: source:waf $ACL @ruleGroupList.nonTerminatingMatchingRules.action:COUNT
+                  query_string: source:waf $ACL @nonTerminatingMatchingRules.action:COUNT
                   indexes: []
                   storage: hot
                 columns:
@@ -753,6 +934,6 @@ widgets:
             type: list_stream
           layout:
             x: 0
-            "y": 3
+            "y": 6
             width: 12
             height: 3
